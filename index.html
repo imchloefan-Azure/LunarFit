@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LunarFit - 智能逻辑看板</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --p-color: #ff6b81; --f-color: #7bed9f; --o-color: #eccc68; --l-color: #70a1ff;
+            --p-pre: rgba(255, 107, 129, 0.15); --f-pre: rgba(123, 237, 159, 0.2);
+            --o-pre: rgba(236, 204, 104, 0.2); --l-pre: rgba(112, 161, 255, 0.2);
+            --bg: #f8f9fa; --text: #2f3542;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+        .left-panel { width: 42%; min-width: 340px; border-right: 1px solid #eee; display: flex; flex-direction: column; padding: 25px; overflow-y: auto; }
+        .right-panel { flex: 1; padding: 35px; overflow-y: auto; background: #fff; }
+
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px 0; }
+        .day-wrapper { padding: 4px 0; display: flex; justify-content: center; align-items: center; position: relative; height: 68px; }
+        .day { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; position: relative; z-index: 2; }
+        .day-num { font-weight: 700; margin-bottom: 4px; }
+        .day.selected { outline: 2px solid var(--text); outline-offset: -2px; border-radius: 12px !important; z-index: 5; background: rgba(255,255,255,0.3); }
+
+        .phase-bg { position: absolute; top: 2px; bottom: 2px; left: 0; right: 0; z-index: 1; transition: 0.3s; }
+        .act-p { background: var(--p-color); color: white !important; }
+        .pre-f { background: var(--f-pre); }
+        .pre-o { background: var(--o-pre); }
+        .pre-l { background: var(--l-pre); }
+        .pre-p { background: var(--p-pre); border: 1px dashed var(--p-color); }
+
+        .round-left { border-top-left-radius: 34px; border-bottom-left-radius: 34px; left: 5px; }
+        .round-right { border-top-right-radius: 34px; border-bottom-right-radius: 34px; right: 5px; }
+        .round-all { border-radius: 34px; left: 5px; right: 5px; }
+
+        .day-sports { display: flex; gap: 3px; justify-content: center; align-items: center; min-height: 20px; }
+        .mini-icon { font-size: 14px !important; }
+
+        .section-title { font-size: 18px; font-weight: 700; margin: 25px 0 12px 0; display: block; }
+        .sport-picker, .level-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .s-card, .l-card { padding: 12px 5px; border: 2px solid #f1f2f6; border-radius: 15px; text-align: center; cursor: pointer; font-size: 13px; }
+        .active { border-color: var(--text) !important; background: #f8f9fa !important; font-weight: 600; }
+
+        .period-controls { display: flex; gap: 10px; margin-bottom: 20px; }
+        .p-btn { flex: 1; padding: 15px; border-radius: 15px; border: 2px solid #f1f2f6; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; background: white; color: var(--text); }
+        .p-btn.on-start { background: var(--p-color); border-color: var(--p-color); color: white; }
+        .p-btn.on-end { background: var(--text); border-color: var(--text); color: white; }
+
+        textarea { width: 100%; border: 1px solid #eee; border-radius: 18px; padding: 15px; font-size: 16px; background: #fafafa; margin-top: 10px; }
+        .btn-main { background: var(--text); color: #fff; width: 100%; padding: 20px; border: none; border-radius: 18px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 25px; }
+
+        @media (max-width: 850px) {
+            body { flex-direction: column; overflow: auto; }
+            .left-panel, .right-panel { width: 100%; height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="left-panel">
+        <h1 style="margin:0">LunarFit</h1>
+        <div class="cal-header">
+            <button onclick="changeMonth(-1)" style="border:none;background:none;font-size:24px;cursor:pointer;">❮</button>
+            <strong id="monthDisplay"></strong>
+            <button onclick="changeMonth(1)" style="border:none;background:none;font-size:24px;cursor:pointer;">❯</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div id="phaseAdvice"></div>
+    </div>
+
+    <div class="right-panel">
+        <span class="section-title" id="dateLabel" style="margin-top:0">选择日期</span>
+        
+        <div class="period-controls">
+            <button class="p-btn" id="startBtn" onclick="toggleBound('start')">
+                <i class="fas fa-play"></i> 设置为开始日
+            </button>
+            <button class="p-btn" id="endBtn" onclick="toggleBound('end')">
+                <i class="fas fa-stop"></i> 设置为结束日
+            </button>
+        </div>
+
+        <span class="section-title">流量感</span>
+        <div class="level-picker" id="flowPicker">
+            <div class="l-card" data-v="0">无</div><div class="l-card" data-v="1">少</div><div class="l-card" data-v="2">中</div><div class="l-card" data-v="3">多</div>
+        </div>
+
+        <span class="section-title">痛感程度</span>
+        <div class="level-picker" id="painPicker">
+            <div class="l-card" data-v="0">无痛</div><div class="l-card" data-v="1">轻微</div><div class="l-card" data-v="2">明显</div><div class="l-card" data-v="3">剧烈</div>
+        </div>
+
+        <span class="section-title">今日运动</span>
+        <div class="sport-picker" id="sportPicker">
+            <div class="s-card" data-s="力量" data-i="fa-dumbbell"><i class="fas fa-dumbbell"></i>力量</div>
+            <div class="s-card" data-s="拳课" data-i="fa-hand-fist"><i class="fas fa-hand-fist"></i>拳课</div>
+            <div class="s-card" data-s="跳舞" data-i="fa-music"><i class="fas fa-music"></i>跳舞</div>
+            <div class="s-card" data-s="游泳" data-i="fa-person-swimming"><i class="fas fa-person-swimming"></i>游泳</div>
+            <div class="s-card" data-s="跑步" data-i="fa-person-running"><i class="fas fa-person-running"></i>跑步</div>
+            <div class="s-card" data-s="攀岩" data-i="fa-mountain"><i class="fas fa-mountain"></i>攀岩</div>
+            <div class="s-card" data-s="羽球" data-i="🏸"><span>🏸</span>羽球</div>
+        </div>
+
+        <textarea id="noteBox" rows="3" placeholder="备注..."></textarea>
+        <button class="btn-main" onclick="saveData()">确认并保存今日</button>
+    </div>
+
+    <script>
+        // 数据结构：cycles 存储每一段完整的月经记录
+        let db = JSON.parse(localStorage.getItem('lFit_v11')) || { 
+            cycles: [], // 格式: [{s: '开始日期', e: '结束日期'}]
+            lg: {}, 
+            cy: 28 
+        };
+
+        let viewingDate = new Date();
+        let selectedDate = new Date().toISOString().split('T')[0];
+
+        const ADVICE = {
+            p: { n: "月经期", c: "var(--p-color)", t: "修复性运动，专注内省。" },
+            f: { n: "卵泡期", c: "var(--f-color)", t: "月经结束，能量回升，适合攻克新知。" },
+            o: { n: "排卵期", c: "var(--o-color)", t: "巅峰状态，适合竞技表达。" },
+            l: { n: "黄体期", c: "var(--l-color)", t: "宜温和有氧，适合整理归类。" }
+        };
+
+        function init() { renderCal(); loadDate(selectedDate); setupPickers(); }
+
+        // --- 核心逻辑引擎：决定每一天的颜色 ---
+        function getStatus(dStr) {
+            const target = new Date(dStr);
+            
+            // 1. 实录检测：遍历所有已保存的周期
+            for (let c of db.cycles) {
+                const s = new Date(c.s);
+                const e = c.e ? new Date(c.e) : null;
+                
+                // 如果日期在开始和结束之间（包含当天）
+                if (e && target >= s && target <= e) return { t: 'act', p: 'p' };
+                // 如果只有开始没结束，默认变红3天作为提示
+                if (!e && target.getTime() === s.getTime()) return { t: 'act', p: 'p' };
+            }
+
+            // 2. 动态校准逻辑：找到该日期之前的最近一个完整周期
+            const pastCycles = db.cycles
+                .filter(c => new Date(c.s) < target)
+                .sort((a,b) => new Date(b.s) - new Date(a.s));
+
+            if (pastCycles.length > 0) {
+                const last = pastCycles[0];
+                const lastS = new Date(last.s);
+                const lastE = last.e ? new Date(last.e) : new Date(lastS.getTime() + 4*86400000);
+                
+                const diffFromStart = Math.floor((target - lastS) / 86400000);
+
+                // A. 如果在当前周期内（28天内）
+                if (diffFromStart < db.cy) {
+                    if (target > lastE) {
+                        if (diffFromStart < 13) return { t: 'pre', p: 'f' }; // 绿：结束日后 -> 第13天
+                        if (diffFromStart < 16) return { t: 'pre', p: 'o' }; // 金：14-16天
+                        return { t: 'pre', p: 'l' }; // 蓝：17天以后
+                    }
+                    return null; // 经期中但用户没标红的部分留白
+                }
+
+                // B. 如果是未来月份：基于最后一个起始日循环预测
+                const futureDay = diffFromStart % db.cy;
+                if (futureDay < 5) return { t: 'pre', p: 'p' };
+                if (futureDay < 13) return { t: 'pre', p: 'f' };
+                if (futureDay < 16) return { t: 'pre', p: 'o' };
+                return { t: 'pre', p: 'l' };
+            }
+            return null;
+        }
+
+        // --- 交互逻辑 ---
+        function toggleBound(type) {
+            // 找到属于“当前记录簇”的记录（15天内的标记视为同一月）
+            let current = db.cycles.find(c => {
+                const d = new Date(selectedDate);
+                const s = new Date(c.s);
+                return Math.abs(d - s) < 15 * 86400000;
+            });
+
+            if (type === 'start') {
+                if (current) {
+                    current.s = (current.s === selectedDate) ? "" : selectedDate; // 再次点击取消
+                    if (!current.s && !current.e) db.cycles = db.cycles.filter(c => c !== current);
+                } else {
+                    db.cycles.push({ s: selectedDate, e: null });
+                }
+            } else {
+                if (current) {
+                    current.e = (current.e === selectedDate) ? null : selectedDate;
+                } else {
+                    alert("请先设置‘开始日’");
+                    return;
+                }
+            }
+            db.cycles = db.cycles.filter(c => c.s); // 清理无效记录
+            save(); renderCal(); loadDate(selectedDate);
+        }
+
+        function renderCal() {
+            const grid = document.getElementById('calGrid');
+            grid.innerHTML = '';
+            document.getElementById('monthDisplay').innerText = `${viewingDate.getFullYear()}年${viewingDate.getMonth()+1}月`;
+            const firstDay = new Date(viewingDate.getFullYear(), viewingDate.getMonth(), 1).getDay();
+            const lastDate = new Date(viewingDate.getFullYear(), viewingDate.getMonth()+1, 0).getDate();
+            
+            for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
+            
+            for(let d=1; d<=lastDate; d++) {
+                const dStr = formatDate(viewingDate.getFullYear(), viewingDate.getMonth(), d);
+                const wrapper = document.createElement('div');
+                wrapper.className = 'day-wrapper';
+                const status = getStatus(dStr);
+                
+                if(status) {
+                    const bg = document.createElement('div');
+                    bg.className = `phase-bg ${status.t}-${status.p}`;
+                    const prevS = getStatus(formatDate(viewingDate.getFullYear(), viewingDate.getMonth(), d-1));
+                    const nextS = getStatus(formatDate(viewingDate.getFullYear(), viewingDate.getMonth(), d+1));
+                    
+                    const isStart = !prevS || prevS.p !== status.p || (firstDay + d - 1) % 7 === 0;
+                    const isEnd = !nextS || nextS.p !== status.p || (firstDay + d - 1) % 7 === 6;
+                    
+                    if(isStart && isEnd) bg.classList.add('round-all');
+                    else if(isStart) bg.classList.add('round-left');
+                    else if(isEnd) bg.classList.add('round-right');
+                    wrapper.appendChild(bg);
+                }
+
+                const el = document.createElement('div');
+                el.className = `day ${dStr === selectedDate ? 'selected' : ''}`;
+                if(status && status.t === 'act') el.style.color = '#fff';
+                el.innerHTML = `<span class="day-num">${d}</span>`;
+                
+                const log = db.lg[dStr];
+                if(log && log.sp && log.sp.length > 0) {
+                    const sContainer = document.createElement('div');
+                    sContainer.className = 'day-sports';
+                    log.sp.forEach(s => {
+                        sContainer.innerHTML += s.i.startsWith('fa-') ? `<i class="fas ${s.i} mini-icon"></i>` : `<span class="mini-icon">${s.i}</span>`;
+                    });
+                    el.appendChild(sContainer);
+                }
+                wrapper.onclick = () => { selectedDate = dStr; renderCal(); loadDate(dStr); };
+                wrapper.appendChild(el);
+                grid.appendChild(wrapper);
+            }
+        }
+
+        function loadDate(dStr) {
+            document.getElementById('dateLabel').innerText = dStr;
+            const log = db.lg[dStr] || { sp: [], n: "", f: 0, p: 0 };
+            
+            // 状态恢复：按键高亮
+            const cycle = db.cycles.find(c => c.s === dStr || c.e === dStr);
+            document.getElementById('startBtn').className = 'p-btn ' + (cycle && cycle.s === dStr ? 'on-start' : '');
+            document.getElementById('endBtn').className = 'p-btn ' + (cycle && cycle.e === dStr ? 'on-end' : '');
+
+            document.getElementById('noteBox').value = log.n || "";
+            document.querySelectorAll('.l-card').forEach(c => c.classList.toggle('active', c.dataset.v == log.f));
+            document.querySelectorAll('#painPicker .l-card').forEach(c => c.classList.toggle('active', c.dataset.v == log.p));
+            document.querySelectorAll('.s-card').forEach(c => c.classList.toggle('active', log.sp?.some(s => s.s === c.dataset.s)));
+
+            const status = getStatus(dStr);
+            const advArea = document.getElementById('phaseAdvice');
+            if(status) {
+                const info = ADVICE[status.p];
+                advArea.innerHTML = `<div style="margin-top:20px; padding:18px; border-radius:18px; background:${info.c}15; border-left:6px solid ${info.c}">
+                    <strong style="color:${info.c}">${info.n}</strong><br><small style="opacity:0.8">${info.t}</small></div>`;
+            }
+        }
+
+        function setupPickers() {
+            document.querySelectorAll('.l-card').forEach(c => {
+                c.onclick = () => {
+                    c.parentElement.querySelectorAll('.l-card').forEach(x => x.classList.remove('active'));
+                    c.classList.add('active');
+                };
+            });
+            document.querySelectorAll('.s-card').forEach(c => {
+                c.onclick = () => {
+                    c.classList.toggle('active');
+                    if(document.querySelectorAll('.s-card.active').length > 3) c.classList.remove('active');
+                };
+            });
+        }
+
+        function saveData() {
+            const flow = document.querySelector('#flowPicker .active')?.dataset.v || 0;
+            const pain = document.querySelector('#painPicker .active')?.dataset.v || 0;
+            const sports = Array.from(document.querySelectorAll('.s-card.active')).map(c => ({s: c.dataset.s, i: c.dataset.i}));
+            db.lg[selectedDate] = { sp: sports, n: document.getElementById('noteBox').value, f: flow, p: pain };
+            save(); alert("今日记录已成功锁存在本地。"); renderCal();
+        }
+
+        function save() { localStorage.setItem('lFit_v11', JSON.stringify(db)); }
+        function changeMonth(s) { viewingDate.setMonth(viewingDate.getMonth() + s); renderCal(); }
+        function formatDate(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+        init();
+    </script>
+</body>
+</html>
