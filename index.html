@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>LunarFit - 科学算法看板</title>
+    <title>LunarFit - 科学节律看板</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -15,21 +15,31 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
 
-        /* iPad 布局适配 */
-        .left-panel { width: 42%; min-width: 360px; border-right: 1px solid #eee; display: flex; flex-direction: column; padding: 25px; overflow-y: auto; }
+        /* iPad 布局 */
+        .left-panel { width: 42%; min-width: 360px; border-right: 1px solid #eee; display: flex; flex-direction: column; padding: 25px; overflow-y: auto; position: relative; }
         .right-panel { flex: 1; padding: 35px; overflow-y: auto; background: #fff; }
 
-        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        /* 同步按钮 */
+        .sync-btn {
+            position: absolute; top: 20px; right: 20px;
+            background: #fff; border: 1.5px solid #eee; border-radius: 12px;
+            padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+        .sync-btn:active { background: #f0f0f0; transform: scale(0.98); }
+
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; width: 80%; }
         .weekday-row { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 10px; }
         .weekday { text-align: center; font-size: 11px; font-weight: 700; color: #a4b0be; text-transform: uppercase; }
 
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px 0; }
-        .day-wrapper { padding: 4px 0; display: flex; justify-content: center; align-items: center; position: relative; height: 72px; }
+        .day-wrapper { padding: 4px 0; display: flex; justify-content: center; align-items: center; position: relative; height: 75px; }
         .day { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; position: relative; z-index: 2; }
         .day-num { font-weight: 700; margin-bottom: 5px; }
         .day.selected { outline: 2px solid var(--text); outline-offset: -2px; border-radius: 12px !important; z-index: 5; background: rgba(255,255,255,0.3); }
 
-        /* 底色丝带系统 */
+        /* 丝带样式 */
         .phase-bg { position: absolute; top: 2px; bottom: 2px; left: 0; right: 0; z-index: 1; transition: 0.2s; }
         .act-p { background: var(--p-color); color: white !important; }
         .pre-f { background: var(--f-pre); }
@@ -41,32 +51,37 @@
         .round-right { border-top-right-radius: 36px; border-bottom-right-radius: 36px; right: 5px; }
         .round-all { border-radius: 36px; left: 5px; right: 5px; }
 
+        /* 运动图标 */
         .day-sports { display: flex; gap: 3px; justify-content: center; align-items: center; min-height: 20px; }
-        .mini-icon { font-size: 13px !important; color: inherit; }
+        .mini-icon { font-size: 14px !important; color: inherit; }
 
+        /* 右侧面板组件 */
         .section-title { font-size: 18px; font-weight: 700; margin: 25px 0 12px 0; display: block; }
         .sport-picker, .level-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
         .s-card, .l-card { padding: 12px 5px; border: 2px solid #f1f2f6; border-radius: 15px; text-align: center; cursor: pointer; font-size: 13px; background: white; }
-        .s-card.active, .l-card.active { border-color: var(--text) !important; background: #f8f9fa !important; font-weight: 600; }
+        .active { border-color: var(--text) !important; background: #f8f9fa !important; font-weight: 600; }
         .s-card i, .s-card span { display: block; font-size: 24px; margin-bottom: 6px; }
 
-        .period-controls { display: flex; gap: 10px; margin-bottom: 20px; }
-        .p-btn { flex: 1; padding: 15px; border-radius: 15px; border: 2px solid #f1f2f6; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; background: white; color: var(--text); }
-        .p-btn.on-start { background: var(--p-color); border-color: var(--p-color); color: white; }
-        .p-btn.on-end { background: var(--text); border-color: var(--text); color: white; }
+        .p-btn { flex: 1; padding: 15px; border-radius: 15px; border: 2px solid #f1f2f6; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; background: white; }
+        .on-start { background: var(--p-color); border-color: var(--p-color); color: white; }
+        .on-end { background: var(--text); border-color: var(--text); color: white; }
 
         textarea { width: 100%; border: 1px solid #eee; border-radius: 18px; padding: 15px; font-size: 16px; background: #fafafa; margin-top: 10px; }
         .btn-main { background: var(--text); color: #fff; width: 100%; padding: 20px; border: none; border-radius: 18px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 25px; }
 
         @media (max-width: 850px) {
             body { flex-direction: column; overflow: auto; }
-            .left-panel, .right-panel { width: 100%; height: auto; }
+            .left-panel, .right-panel { width: 100%; height: auto; border: none; }
         }
     </style>
 </head>
 <body>
 
     <div class="left-panel">
+        <button class="sync-btn" onclick="syncToiOSCalendar()">
+            <i class="far fa-calendar-plus"></i> 同步到日历
+        </button>
+
         <h1 style="margin:0">LunarFit</h1>
         <div class="cal-header" style="margin-top:10px;">
             <button onclick="changeMonth(-1)" style="border:none;background:none;font-size:24px;cursor:pointer;">❮</button>
@@ -85,14 +100,9 @@
 
     <div class="right-panel">
         <span class="section-title" id="dateLabel" style="margin-top:0">选择日期</span>
-        
-        <div class="period-controls">
-            <button class="p-btn" id="startBtn" onclick="toggleBound('start')">
-                <i class="fas fa-play"></i> 月经开始日
-            </button>
-            <button class="p-btn" id="endBtn" onclick="toggleBound('end')">
-                <i class="fas fa-stop"></i> 月经结束日
-            </button>
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <button class="p-btn" id="startBtn" onclick="toggleBound('start')"><i class="fas fa-play"></i> 开始日</button>
+            <button class="p-btn" id="endBtn" onclick="toggleBound('end')"><i class="fas fa-stop"></i> 结束日</button>
         </div>
 
         <span class="section-title">流量感</span>
@@ -116,89 +126,60 @@
             <div class="s-card" data-s="羽球" data-i="🏸"><span>🏸</span>羽球</div>
         </div>
 
-        <textarea id="noteBox" rows="3" placeholder="写下身体的觉察..."></textarea>
+        <textarea id="noteBox" rows="3" placeholder="写下身体记录..."></textarea>
         <button class="btn-main" onclick="saveData()">确认保存并锁存数据</button>
     </div>
 
     <script>
         // 初始化数据
-        let db = JSON.parse(localStorage.getItem('lFit_v13')) || { 
-            cycles: [], 
-            lg: {}, 
-            cy: 28 
-        };
-
+        let db = JSON.parse(localStorage.getItem('lFit_vFinal')) || { cycles: [], lg: {}, cy: 28 };
         let viewingDate = new Date();
         let selectedDate = new Date().toISOString().split('T')[0];
 
         const ADVICE = {
-            p: { n: "月经期 (Phase 1)", c: "var(--p-color)", t: "修复性运动，专注内省。建议：瑜伽、冥想。" },
-            f: { n: "卵泡期 (Phase 2)", c: "var(--f-color)", t: "能量回升，代谢加速。建议：力量训练、攻克难题。" },
-            o: { n: "排卵期 (Phase 3)", c: "var(--o-color)", t: "激素巔峰，身心最强状态。建议：竞技运动、社交活动。" },
-            l: { n: "黄体期 (Phase 4)", c: "var(--l-color)", t: "宜温和有氧，情绪波动期。建议：有氧耐力、整理复习。" }
+            p: { n: "月经期 (P1)", c: "var(--p-color)", t: "修复性运动，建议：瑜伽、冥想。" },
+            f: { n: "卵泡期 (P2)", c: "var(--f-color)", t: "能量回升。建议：力量训练、攻克难题。" },
+            o: { n: "排卵期 (P3)", c: "var(--o-color)", t: "状态巅峰。建议：竞技运动、社交活动。" },
+            l: { n: "黄体期 (P4)", c: "var(--l-color)", t: "宜温和有氧。建议：有氧耐力、整理复习。" }
         };
 
         function init() { 
-            calculateAvgCycle();
+            calculateAvgCycle(); 
             renderCal(); 
             loadDate(selectedDate); 
             setupPickers(); 
         }
 
-        // --- 核心：计算平均周期 L ---
         function calculateAvgCycle() {
-            if (db.cycles.length < 2) {
-                db.cy = 28; // 默认
-                return;
-            }
+            if (db.cycles.length < 2) return db.cy = 28;
             let starts = db.cycles.map(c => new Date(c.s)).sort((a,b) => a-b);
             let intervals = [];
             for(let i=1; i<starts.length; i++) {
                 let diff = (starts[i] - starts[i-1]) / 86400000;
                 if(diff >= 20 && diff <= 45) intervals.push(diff);
             }
-            if(intervals.length > 0) {
-                db.cy = Math.round(intervals.reduce((a,b)=>a+b) / intervals.length);
-            }
+            if(intervals.length > 0) db.cy = Math.round(intervals.reduce((a,b)=>a+b) / intervals.length);
         }
 
-        // --- 核心：基于图表数学公式的阶段判定 ---
+        // --- 核心：严格执行图表公式判定 ---
         function getStatus(dStr) {
             const target = new Date(dStr);
-            const L = db.cy; // 周期总长
+            const L = db.cy;
 
-            // 1. 实录检测：处于任意手动标记的 [开始, 结束] 区间内
+            // 1. 实录红区判定
             for (let c of db.cycles) {
-                const s = new Date(c.s);
-                const e = c.e ? new Date(c.e) : null;
+                const s = new Date(c.s); const e = c.e ? new Date(c.e) : null;
                 if (e && target >= s && target <= e) return { t: 'act', p: 'p' };
                 if (!e && target.getTime() === s.getTime()) return { t: 'act', p: 'p' };
             }
 
-            // 2. 动态判定逻辑（图表公式实现）
-            const pastCycles = db.cycles
-                .filter(c => new Date(c.s) < target)
-                .sort((a,b) => new Date(b.s) - new Date(a.s));
-
+            // 2. 动态公式判定
+            const pastCycles = db.cycles.filter(c => new Date(c.s) < target).sort((a,b) => new Date(b.s) - new Date(a.s));
             if (pastCycles.length > 0) {
-                const last = pastCycles[0];
-                const lastS = new Date(last.s);
-                const dayOfCycle = Math.floor((target - lastS) / 86400000) + 1; // 当前是周期的第几天
-
-                // 如果在当前周期内
-                if (dayOfCycle <= L) {
-                    // 月经期：1-5天 (如果用户没标 act，显示预估色)
-                    if (dayOfCycle <= 5) return { t: 'pre', p: 'p' };
-                    // 卵泡期：6 到 (L/2 - 2)
-                    if (dayOfCycle <= (L/2 - 2)) return { t: 'pre', p: 'f' };
-                    // 排卵期：(L/2 - 1) 到 (L/2 + 1)
-                    if (dayOfCycle <= (L/2 + 1)) return { t: 'pre', p: 'o' };
-                    // 黄体期：(L/2 + 2) 到 L
-                    return { t: 'pre', p: 'l' };
-                }
-
-                // 未来预测逻辑（循环应用公式）
+                const lastS = new Date(pastCycles[0].s);
+                const dayOfCycle = Math.floor((target - lastS) / 86400000) + 1;
                 const futureDay = ((dayOfCycle - 1) % L) + 1;
+
                 if (futureDay <= 5) return { t: 'pre', p: 'p' };
                 if (futureDay <= (L/2 - 2)) return { t: 'pre', p: 'f' };
                 if (futureDay <= (L/2 + 1)) return { t: 'pre', p: 'o' };
@@ -207,74 +188,85 @@
             return null;
         }
 
-        // --- 交互逻辑 ---
-        function toggleBound(type) {
-            let current = db.cycles.find(c => {
-                const d = new Date(selectedDate);
-                const s = new Date(c.s);
-                return Math.abs(d - s) < 20 * 86400000;
-            });
-
-            if (type === 'start') {
-                if (current) {
-                    current.s = (current.s === selectedDate) ? "" : selectedDate;
-                    if (!current.s && !current.e) db.cycles = db.cycles.filter(c => c !== current);
-                } else {
-                    db.cycles.push({ s: selectedDate, e: null });
+        // --- 核心：同步至 iOS 日历修复版 ---
+        function syncToiOSCalendar() {
+            let icsContent = ["BEGIN:VCALENDAR","VERSION:2.0","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+            let today = new Date();
+            for (let i = -5; i < 30; i++) {
+                let d = new Date(today); d.setDate(today.getDate() + i);
+                let dStr = d.toISOString().split('T')[0];
+                let status = getStatus(dStr);
+                let icsDate = dStr.replace(/-/g, "");
+                
+                if (status) {
+                    icsContent.push("BEGIN:VEVENT", `SUMMARY:LunarFit: ${ADVICE[status.p].n}`, `DTSTART;VALUE=DATE:${icsDate}`, `DTEND;VALUE=DATE:${icsDate}`, `DESCRIPTION:${ADVICE[status.p].t}`, "END:VEVENT");
                 }
-            } else {
-                if (current) {
-                    current.e = (current.e === selectedDate) ? null : selectedDate;
-                } else {
-                    alert("请先标记‘开始日’再标记结束日"); return;
+                let log = db.lg[dStr];
+                if (log && log.sp && log.sp.length > 0) {
+                    let sName = log.sp.map(s => s.s).join(",");
+                    icsContent.push("BEGIN:VEVENT", `SUMMARY:🏃 LunarFit运动: ${sName}`, `DTSTART;VALUE=DATE:${icsDate}`, `DTEND;VALUE=DATE:${icsDate}`, `DESCRIPTION:备注: ${log.n || "无"}`, "END:VEVENT");
                 }
             }
-            db.cycles = db.cycles.filter(c => c.s); 
-            calculateAvgCycle(); // 重新计算 L
-            save(); renderCal(); loadDate(selectedDate);
+            icsContent.push("END:VCALENDAR");
+            
+            const blob = new Blob([icsContent.join("\r\n")], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "LunarFit_Calendar.ics";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            setTimeout(() => {
+                alert("✨ 同步文件已生成！\n\n1. 请观察地址栏处的 [下载箭头↓]\n2. 点击列表中的文件\n3. 选‘全部添加’即可！");
+            }, 600);
         }
 
+        // --- 界面渲染逻辑 ---
         function renderCal() {
-            const grid = document.getElementById('calGrid');
-            grid.innerHTML = '';
+            const grid = document.getElementById('calGrid'); grid.innerHTML = '';
             document.getElementById('monthDisplay').innerText = `${viewingDate.getFullYear()}年${viewingDate.getMonth()+1}月`;
             const firstDay = new Date(viewingDate.getFullYear(), viewingDate.getMonth(), 1).getDay();
             const lastDate = new Date(viewingDate.getFullYear(), viewingDate.getMonth()+1, 0).getDate();
             for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
             for(let d=1; d<=lastDate; d++) {
                 const dStr = formatDate(viewingDate.getFullYear(), viewingDate.getMonth(), d);
-                const wrapper = document.createElement('div');
-                wrapper.className = 'day-wrapper';
+                const wrapper = document.createElement('div'); wrapper.className = 'day-wrapper';
                 const status = getStatus(dStr);
                 if(status) {
-                    const bg = document.createElement('div');
-                    bg.className = `phase-bg ${status.t}-${status.p}`;
+                    const bg = document.createElement('div'); bg.className = `phase-bg ${status.t}-${status.p}`;
                     const prevS = getStatus(formatDate(viewingDate.getFullYear(), viewingDate.getMonth(), d-1));
                     const nextS = getStatus(formatDate(viewingDate.getFullYear(), viewingDate.getMonth(), d+1));
                     const isStart = !prevS || prevS.p !== status.p || (firstDay + d - 1) % 7 === 0;
                     const isEnd = !nextS || nextS.p !== status.p || (firstDay + d - 1) % 7 === 6;
-                    if(isStart && isEnd) bg.classList.add('round-all');
-                    else if(isStart) bg.classList.add('round-left');
-                    else if(isEnd) bg.classList.add('round-right');
+                    if(isStart && isEnd) bg.classList.add('round-all'); else if(isStart) bg.classList.add('round-left'); else if(isEnd) bg.classList.add('round-right');
                     wrapper.appendChild(bg);
                 }
-                const el = document.createElement('div');
-                el.className = `day ${dStr === selectedDate ? 'selected' : ''}`;
+                const el = document.createElement('div'); el.className = `day ${dStr === selectedDate ? 'selected' : ''}`;
                 if(status && status.t === 'act') el.style.color = '#fff';
                 el.innerHTML = `<span class="day-num">${d}</span>`;
                 const log = db.lg[dStr];
                 if(log && log.sp) {
-                    const sContainer = document.createElement('div');
-                    sContainer.className = 'day-sports';
-                    log.sp.forEach(s => {
-                        sContainer.innerHTML += s.i.startsWith('fa-') ? `<i class="fas ${s.i} mini-icon"></i>` : `<span class="mini-icon">${s.i}</span>`;
-                    });
+                    const sContainer = document.createElement('div'); sContainer.className = 'day-sports';
+                    log.sp.forEach(s => { sContainer.innerHTML += s.i.startsWith('fa-') ? `<i class="fas ${s.i} mini-icon"></i>` : `<span class="mini-icon">${s.i}</span>`; });
                     el.appendChild(sContainer);
                 }
                 wrapper.onclick = () => { selectedDate = dStr; renderCal(); loadDate(dStr); };
-                wrapper.appendChild(el);
-                grid.appendChild(wrapper);
+                wrapper.appendChild(el); grid.appendChild(wrapper);
             }
+        }
+
+        function toggleBound(type) {
+            let current = db.cycles.find(c => { const d = new Date(selectedDate); const s = new Date(c.s); return Math.abs(d - s) < 20 * 86400000; });
+            if (type === 'start') { if (current) { current.s = (current.s === selectedDate) ? "" : selectedDate; if (!current.s && !current.e) db.cycles = db.cycles.filter(c => c !== current); } else { db.cycles.push({ s: selectedDate, e: null }); } }
+            else { if (current) { current.e = (current.e === selectedDate) ? null : selectedDate; } else { alert("请先标记起始日"); return; } }
+            db.cycles = db.cycles.filter(c => c.s); calculateAvgCycle(); save(); renderCal(); loadDate(selectedDate);
+        }
+
+        function setupPickers() {
+            document.querySelectorAll('.l-card').forEach(c => { c.onclick = () => { c.parentElement.querySelectorAll('.l-card').forEach(x => x.classList.remove('active')); c.classList.add('active'); }; });
+            document.querySelectorAll('.s-card').forEach(c => { c.onclick = () => { c.classList.toggle('active'); if(document.querySelectorAll('.s-card.active').length > 3) c.classList.remove('active'); syncSports(); renderCal(); }; });
         }
 
         function loadDate(dStr) {
@@ -290,49 +282,17 @@
             document.querySelectorAll('.s-card').forEach(c => c.classList.toggle('active', log.sp?.some(s => s.s === c.dataset.s)));
             const status = getStatus(dStr);
             const advArea = document.getElementById('phaseAdvice');
-            if(status) {
-                const info = ADVICE[status.p];
-                advArea.innerHTML = `<div style="margin-top:20px; padding:18px; border-radius:18px; background:${info.c}15; border-left:6px solid ${info.c}">
-                    <strong style="color:${info.c}">${info.n}</strong><br><small style="opacity:0.8">${info.t}</small></div>`;
-            } else {
-                advArea.innerHTML = "";
-            }
+            if(status) { const info = ADVICE[status.p]; advArea.innerHTML = `<div style="margin-top:20px; padding:18px; border-radius:18px; background:${info.c}15; border-left:6px solid ${info.c}"><strong>${info.n}</strong><br><small style="opacity:0.8">${info.t}</small></div>`; }
+            else { advArea.innerHTML = ""; }
         }
 
-        function setupPickers() {
-            document.querySelectorAll('.l-card').forEach(c => {
-                c.onclick = () => {
-                    c.parentElement.querySelectorAll('.l-card').forEach(x => x.classList.remove('active'));
-                    c.classList.add('active');
-                };
-            });
-            document.querySelectorAll('.s-card').forEach(c => {
-                c.onclick = () => {
-                    c.classList.toggle('active');
-                    if(document.querySelectorAll('.s-card.active').length > 3) c.classList.remove('active');
-                    syncSports(); renderCal();
-                };
-            });
-        }
-
-        function syncSports() {
-            if(!db.lg[selectedDate]) db.lg[selectedDate] = { sp: [], n: "", f: 0, p: 0 };
-            db.lg[selectedDate].sp = Array.from(document.querySelectorAll('.s-card.active')).map(c => ({s: c.dataset.s, i: c.dataset.i}));
-        }
-
-        function saveData() {
-            syncSports();
-            db.lg[selectedDate].f = document.querySelector('#flowPicker .active')?.dataset.v || 0;
-            db.lg[selectedDate].p = document.querySelector('#painPicker .active')?.dataset.v || 0;
-            db.lg[selectedDate].n = document.getElementById('noteBox').value;
-            save(); alert("LunarFit：今日数据已写入本地硬盘"); renderCal();
-        }
-
-        function save() { localStorage.setItem('lFit_v13', JSON.stringify(db)); }
+        function syncSports() { if(!db.lg[selectedDate]) db.lg[selectedDate] = { sp: [], n: "", f: 0, p: 0 }; db.lg[selectedDate].sp = Array.from(document.querySelectorAll('.s-card.active')).map(c => ({s: c.dataset.s, i: c.dataset.i})); }
+        function saveData() { syncSports(); db.lg[selectedDate].f = document.querySelector('#flowPicker .active')?.dataset.v || 0; db.lg[selectedDate].p = document.querySelector('#painPicker .active')?.dataset.v || 0; db.lg[selectedDate].n = document.getElementById('noteBox').value; save(); alert("已保存记录"); renderCal(); }
+        function save() { localStorage.setItem('lFit_vFinal', JSON.stringify(db)); }
         function changeMonth(s) { viewingDate.setMonth(viewingDate.getMonth() + s); renderCal(); }
         function formatDate(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
-
         init();
     </script>
 </body>
 </html>
+           
