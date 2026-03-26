@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>LunarFit - 科学节律看板</title>
+    <title>LunarFit - 身体报告与节律看板</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -15,19 +15,12 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
 
-        /* iPad 布局 */
+        /* 布局 */
         .left-panel { width: 42%; min-width: 360px; border-right: 1px solid #eee; display: flex; flex-direction: column; padding: 25px; overflow-y: auto; position: relative; }
         .right-panel { flex: 1; padding: 35px; overflow-y: auto; background: #fff; }
 
         /* 同步按钮 */
-        .sync-btn {
-            position: absolute; top: 20px; right: 20px;
-            background: #fff; border: 1.5px solid #eee; border-radius: 12px;
-            padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            z-index: 100;
-        }
-        .sync-btn:active { background: #f0f0f0; transform: scale(0.98); }
+        .sync-btn { position: absolute; top: 20px; right: 20px; background: #fff; border: 1.5px solid #eee; border-radius: 12px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; z-index: 100; }
 
         .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; width: 80%; }
         .weekday-row { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 10px; }
@@ -39,7 +32,6 @@
         .day-num { font-weight: 700; margin-bottom: 5px; }
         .day.selected { outline: 2px solid var(--text); outline-offset: -2px; border-radius: 12px !important; z-index: 5; background: rgba(255,255,255,0.3); }
 
-        /* 丝带样式 */
         .phase-bg { position: absolute; top: 2px; bottom: 2px; left: 0; right: 0; z-index: 1; transition: 0.2s; }
         .act-p { background: var(--p-color); color: white !important; }
         .pre-f { background: var(--f-pre); }
@@ -51,11 +43,9 @@
         .round-right { border-top-right-radius: 36px; border-bottom-right-radius: 36px; right: 5px; }
         .round-all { border-radius: 36px; left: 5px; right: 5px; }
 
-        /* 运动图标 */
         .day-sports { display: flex; gap: 3px; justify-content: center; align-items: center; min-height: 20px; }
-        .mini-icon { font-size: 14px !important; color: inherit; }
+        .mini-icon { font-size: 14px !important; }
 
-        /* 右侧面板组件 */
         .section-title { font-size: 18px; font-weight: 700; margin: 25px 0 12px 0; display: block; }
         .sport-picker, .level-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
         .s-card, .l-card { padding: 12px 5px; border: 2px solid #f1f2f6; border-radius: 15px; text-align: center; cursor: pointer; font-size: 13px; background: white; }
@@ -68,6 +58,26 @@
 
         textarea { width: 100%; border: 1px solid #eee; border-radius: 18px; padding: 15px; font-size: 16px; background: #fafafa; margin-top: 10px; }
         .btn-main { background: var(--text); color: #fff; width: 100%; padding: 20px; border: none; border-radius: 18px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 25px; }
+        .btn-report { background: #5e6ad2; color: white; margin-top: 15px; }
+
+        /* 报告遮罩层样式 */
+        #reportOverlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000;
+            display: none; justify-content: center; align-items: center; padding: 20px;
+        }
+        .report-modal {
+            background: #fff; width: 100%; max-width: 700px; max-height: 90vh;
+            border-radius: 24px; overflow-y: auto; padding: 40px; position: relative;
+        }
+        .close-report { position: absolute; top: 20px; right: 20px; font-size: 24px; cursor: pointer; color: #ccc; }
+        .report-header { text-align: center; border-bottom: 2px solid #f8f9fa; padding-bottom: 20px; margin-bottom: 25px; }
+        .report-section { margin-bottom: 30px; }
+        .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .report-stat-card { background: #f8f9fa; padding: 15px; border-radius: 16px; }
+        .stat-val { font-size: 24px; font-weight: 800; color: #5e6ad2; }
+        .trend-up { color: #ff6b81; font-size: 12px; }
+        .trend-down { color: #7bed9f; font-size: 12px; }
+        .advice-pill { background: #5e6ad215; border-left: 4px solid #5e6ad2; padding: 15px; border-radius: 8px; font-size: 14px; line-height: 1.6; }
 
         @media (max-width: 850px) {
             body { flex-direction: column; overflow: auto; }
@@ -78,22 +88,17 @@
 <body>
 
     <div class="left-panel">
-        <button class="sync-btn" onclick="syncToiOSCalendar()">
-            <i class="far fa-calendar-plus"></i> 同步到日历
-        </button>
-
+        <button class="sync-btn" onclick="syncToiOSCalendar()"><i class="far fa-calendar-plus"></i> 同步到日历</button>
         <h1 style="margin:0">LunarFit</h1>
         <div class="cal-header" style="margin-top:10px;">
             <button onclick="changeMonth(-1)" style="border:none;background:none;font-size:24px;cursor:pointer;">❮</button>
             <strong id="monthDisplay"></strong>
             <button onclick="changeMonth(1)" style="border:none;background:none;font-size:24px;cursor:pointer;">❯</button>
         </div>
-        
         <div class="weekday-row">
             <div class="weekday">Sun</div><div class="weekday">Mon</div><div class="weekday">Tue</div>
             <div class="weekday">Wed</div><div class="weekday">Thu</div><div class="weekday">Fri</div><div class="weekday">Sat</div>
         </div>
-
         <div class="cal-grid" id="calGrid"></div>
         <div id="phaseAdvice"></div>
     </div>
@@ -104,17 +109,14 @@
             <button class="p-btn" id="startBtn" onclick="toggleBound('start')"><i class="fas fa-play"></i> 开始日</button>
             <button class="p-btn" id="endBtn" onclick="toggleBound('end')"><i class="fas fa-stop"></i> 结束日</button>
         </div>
-
         <span class="section-title">流量感</span>
         <div class="level-picker" id="flowPicker">
             <div class="l-card" data-v="0">无</div><div class="l-card" data-v="1">少</div><div class="l-card" data-v="2">中</div><div class="l-card" data-v="3">多</div>
         </div>
-
         <span class="section-title">痛感程度</span>
         <div class="level-picker" id="painPicker">
             <div class="l-card" data-v="0">无痛</div><div class="l-card" data-v="1">轻微</div><div class="l-card" data-v="2">明显</div><div class="l-card" data-v="3">剧烈</div>
         </div>
-
         <span class="section-title">今日运动</span>
         <div class="sport-picker" id="sportPicker">
             <div class="s-card" data-s="力量" data-i="fa-dumbbell"><i class="fas fa-dumbbell"></i>力量</div>
@@ -125,30 +127,32 @@
             <div class="s-card" data-s="攀岩" data-i="fa-mountain"><i class="fas fa-mountain"></i>攀岩</div>
             <div class="s-card" data-s="羽球" data-i="🏸"><span>🏸</span>羽球</div>
         </div>
-
         <textarea id="noteBox" rows="3" placeholder="写下身体记录..."></textarea>
-        <button class="btn-main" onclick="saveData()">确认保存并锁存数据</button>
+        <button class="btn-main" onclick="saveData()">保存今日数据</button>
+        <button class="btn-main btn-report" onclick="generateReport()"><i class="fas fa-chart-line"></i> 生成本月身体智慧报告</button>
+    </div>
+
+    <!-- 报告模态框 -->
+    <div id="reportOverlay">
+        <div class="report-modal">
+            <i class="fas fa-times close-report" onclick="closeReport()"></i>
+            <div id="reportContent"></div>
+        </div>
     </div>
 
     <script>
-        // 初始化数据
-        let db = JSON.parse(localStorage.getItem('lFit_vFinal')) || { cycles: [], lg: {}, cy: 28 };
+        let db = JSON.parse(localStorage.getItem('lFit_v15')) || { cycles: [], lg: {}, cy: 28 };
         let viewingDate = new Date();
         let selectedDate = new Date().toISOString().split('T')[0];
 
         const ADVICE = {
             p: { n: "月经期 (P1)", c: "var(--p-color)", t: "修复性运动，建议：瑜伽、冥想。" },
             f: { n: "卵泡期 (P2)", c: "var(--f-color)", t: "能量回升。建议：力量训练、攻克难题。" },
-            o: { n: "排卵期 (P3)", c: "var(--o-color)", t: "状态巅峰。建议：竞技运动、社交活动。" },
+            o: { n: "排卵期 (P3)", c: "var(--o-color)", t: "激素巔峰。建议：竞技运动、社交活动。" },
             l: { n: "黄体期 (P4)", c: "var(--l-color)", t: "宜温和有氧。建议：有氧耐力、整理复习。" }
         };
 
-        function init() { 
-            calculateAvgCycle(); 
-            renderCal(); 
-            loadDate(selectedDate); 
-            setupPickers(); 
-        }
+        function init() { calculateAvgCycle(); renderCal(); loadDate(selectedDate); setupPickers(); }
 
         function calculateAvgCycle() {
             if (db.cycles.length < 2) return db.cy = 28;
@@ -161,25 +165,18 @@
             if(intervals.length > 0) db.cy = Math.round(intervals.reduce((a,b)=>a+b) / intervals.length);
         }
 
-        // --- 核心：严格执行图表公式判定 ---
         function getStatus(dStr) {
-            const target = new Date(dStr);
-            const L = db.cy;
-
-            // 1. 实录红区判定
+            const target = new Date(dStr); const L = db.cy;
             for (let c of db.cycles) {
                 const s = new Date(c.s); const e = c.e ? new Date(c.e) : null;
                 if (e && target >= s && target <= e) return { t: 'act', p: 'p' };
                 if (!e && target.getTime() === s.getTime()) return { t: 'act', p: 'p' };
             }
-
-            // 2. 动态公式判定
             const pastCycles = db.cycles.filter(c => new Date(c.s) < target).sort((a,b) => new Date(b.s) - new Date(a.s));
             if (pastCycles.length > 0) {
                 const lastS = new Date(pastCycles[0].s);
                 const dayOfCycle = Math.floor((target - lastS) / 86400000) + 1;
                 const futureDay = ((dayOfCycle - 1) % L) + 1;
-
                 if (futureDay <= 5) return { t: 'pre', p: 'p' };
                 if (futureDay <= (L/2 - 2)) return { t: 'pre', p: 'f' };
                 if (futureDay <= (L/2 + 1)) return { t: 'pre', p: 'o' };
@@ -188,19 +185,93 @@
             return null;
         }
 
-        // --- 核心：同步至 iOS 日历修复版 ---
+        // --- 核心报告生成逻辑 ---
+        function generateReport() {
+            const year = viewingDate.getFullYear();
+            const month = viewingDate.getMonth();
+            const curMonthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+            const lastMonthKey = month === 0 ? `${year-1}-12` : `${year}-${String(month).padStart(2, '0')}`;
+
+            const analyze = (mKey) => {
+                const logs = Object.keys(db.lg).filter(k => k.startsWith(mKey)).map(k => ({...db.lg[k], date: k}));
+                const sportsCount = {};
+                let totalPain = 0, totalFlow = 0, daysLogged = logs.length;
+                logs.forEach(l => {
+                    (l.sp || []).forEach(s => sportsCount[s.s] = (sportsCount[s.s] || 0) + 1);
+                    totalPain += parseInt(l.p || 0);
+                    totalFlow += parseInt(l.f || 0);
+                });
+                return {
+                    count: daysLogged,
+                    avgPain: daysLogged ? (totalPain / daysLogged).toFixed(1) : 0,
+                    avgFlow: daysLogged ? (totalFlow / daysLogged).toFixed(1) : 0,
+                    sports: sportsCount,
+                    totalWorkouts: Object.values(sportsCount).reduce((a,b)=>a+b, 0)
+                };
+            };
+
+            const cur = analyze(curMonthKey);
+            const prev = analyze(lastMonthKey);
+
+            // 智能建议逻辑
+            let advice = "本月你的身体节律表现稳定。";
+            if (cur.avgPain > prev.avgPain && cur.avgPain > 1.5) {
+                advice = "注意：本月平均痛感有所上升。通过记录发现，你在黄体后期（P4）的运动频率较高，建议下月该阶段增加皮质醇调节类运动（如散步、拉伸）。";
+            } else if (cur.totalWorkouts > prev.totalWorkouts) {
+                advice = "干得漂亮！本月运动效率显著提升。数据显示你精准抓住了卵泡期（P2）的能量窗口。";
+            }
+
+            const html = `
+                <div class="report-header">
+                    <h2>LunarFit 身体智慧报告</h2>
+                    <p style="color:#888">${year}年${month+1}月总结</p>
+                </div>
+                <div class="report-section">
+                    <h3 class="section-title"><i class="fas fa-activity"></i> 核心指标趋势</h3>
+                    <div class="report-grid">
+                        <div class="report-stat-card">
+                            <p>平均痛感 (0-3)</p>
+                            <span class="stat-val">${cur.avgPain}</span>
+                            <span class="${cur.avgPain > prev.avgPain ? 'trend-up' : 'trend-down'}">
+                                ${cur.avgPain > prev.avgPain ? '↑' : '↓'} 较上月
+                            </span>
+                        </div>
+                        <div class="report-stat-card">
+                            <p>累计运动次数</p>
+                            <span class="stat-val">${cur.totalWorkouts}</span>
+                            <span class="trend-down">较上月 ${cur.totalWorkouts - prev.totalWorkouts > 0 ? '+' : ''}${cur.totalWorkouts - prev.totalWorkouts}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="report-section">
+                    <h3 class="section-title"><i class="fas fa-dumbbell"></i> 运动分布分析</h3>
+                    <div class="advice-pill" style="background:white; border:1px solid #eee">
+                        ${Object.entries(cur.sports).length > 0 ? 
+                            Object.entries(cur.sports).map(([n, c]) => `<span>${n}: ${c}次</span>`).join(' | ') : 
+                            '本月暂无运动记录'}
+                    </div>
+                </div>
+                <div class="report-section">
+                    <h3 class="section-title"><i class="fas fa-lightbulb"></i> 节律规划建议</h3>
+                    <div class="advice-pill">${advice}</div>
+                </div>
+                <button class="btn-main" onclick="closeReport()">返回看板</button>
+            `;
+            document.getElementById('reportContent').innerHTML = html;
+            document.getElementById('reportOverlay').style.display = 'flex';
+        }
+
+        function closeReport() { document.getElementById('reportOverlay').style.display = 'none'; }
+
+        // --- 基础功能逻辑保持 ---
         function syncToiOSCalendar() {
             let icsContent = ["BEGIN:VCALENDAR","VERSION:2.0","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
             let today = new Date();
             for (let i = -5; i < 30; i++) {
                 let d = new Date(today); d.setDate(today.getDate() + i);
                 let dStr = d.toISOString().split('T')[0];
-                let status = getStatus(dStr);
-                let icsDate = dStr.replace(/-/g, "");
-                
-                if (status) {
-                    icsContent.push("BEGIN:VEVENT", `SUMMARY:LunarFit: ${ADVICE[status.p].n}`, `DTSTART;VALUE=DATE:${icsDate}`, `DTEND;VALUE=DATE:${icsDate}`, `DESCRIPTION:${ADVICE[status.p].t}`, "END:VEVENT");
-                }
+                let status = getStatus(dStr); let icsDate = dStr.replace(/-/g, "");
+                if (status) { icsContent.push("BEGIN:VEVENT", `SUMMARY:LunarFit: ${ADVICE[status.p].n}`, `DTSTART;VALUE=DATE:${icsDate}`, `DTEND;VALUE=DATE:${icsDate}`, `DESCRIPTION:${ADVICE[status.p].t}`, "END:VEVENT"); }
                 let log = db.lg[dStr];
                 if (log && log.sp && log.sp.length > 0) {
                     let sName = log.sp.map(s => s.s).join(",");
@@ -208,22 +279,13 @@
                 }
             }
             icsContent.push("END:VCALENDAR");
-            
             const blob = new Blob([icsContent.join("\r\n")], { type: 'text/calendar;charset=utf-8' });
             const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "LunarFit_Calendar.ics";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            setTimeout(() => {
-                alert("✨ 同步文件已生成！\n\n1. 请观察地址栏处的 [下载箭头↓]\n2. 点击列表中的文件\n3. 选‘全部添加’即可！");
-            }, 600);
+            const link = document.createElement("a"); link.href = url; link.download = "LunarFit_Calendar.ics";
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            alert("同步文件已准备好！请点击Safari下载箭头导入日历。");
         }
 
-        // --- 界面渲染逻辑 ---
         function renderCal() {
             const grid = document.getElementById('calGrid'); grid.innerHTML = '';
             document.getElementById('monthDisplay').innerText = `${viewingDate.getFullYear()}年${viewingDate.getMonth()+1}月`;
@@ -288,11 +350,10 @@
 
         function syncSports() { if(!db.lg[selectedDate]) db.lg[selectedDate] = { sp: [], n: "", f: 0, p: 0 }; db.lg[selectedDate].sp = Array.from(document.querySelectorAll('.s-card.active')).map(c => ({s: c.dataset.s, i: c.dataset.i})); }
         function saveData() { syncSports(); db.lg[selectedDate].f = document.querySelector('#flowPicker .active')?.dataset.v || 0; db.lg[selectedDate].p = document.querySelector('#painPicker .active')?.dataset.v || 0; db.lg[selectedDate].n = document.getElementById('noteBox').value; save(); alert("已保存记录"); renderCal(); }
-        function save() { localStorage.setItem('lFit_vFinal', JSON.stringify(db)); }
+        function save() { localStorage.setItem('lFit_v15', JSON.stringify(db)); }
         function changeMonth(s) { viewingDate.setMonth(viewingDate.getMonth() + s); renderCal(); }
         function formatDate(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
         init();
     </script>
 </body>
 </html>
-           
